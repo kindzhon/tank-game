@@ -265,7 +265,7 @@ namespace {
                VerifyWifi();
             #endif
             #if defined(DISPLAY_SSD1306) || defined(DISPLAY_16X2) || defined(DISPLAY_ST7789)
-              display_info(http.errorToString(httpCode));
+              display_info(https.errorToString(httpCode));
             #endif
         }
         https.end();
