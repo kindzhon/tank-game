@@ -22,9 +22,68 @@
 #endif
 
 #if defined(DISPLAY_ST7789)
-    // Define some colors
-    #define WHITE TFT_WHITE
-    #define BLACK TFT_BLACK
+    // Define colors
+    #define WHITE       TFT_WHITE
+    #define BLACK       TFT_BLACK
+    #define DUCO_GOLD   0xFD20
+    #define DUCO_GRAY   0x7BEF
+    #define DUCO_DARK   0x39E7
+    #define DUCO_GREEN  0x07E0
+    #define DUCO_CYAN   0x07FF
+
+    // Draw WiFi signal bars
+    void drawWifiBars(int x, int y) {
+      int rssi = WiFi.RSSI();
+      int bars = (rssi > -40) ? 4 : (rssi > -60) ? 3 : (rssi > -75) ? 2 : 1;
+      for (int i = 0; i < 4; i++) {
+        int barH = 6 + i * 5;
+        int barY = y + 20 - barH;
+        uint16_t color = (i < bars) ? DUCO_GREEN : DUCO_DARK;
+        tft.fillRect(x + i * 9, barY, 7, barH, color);
+      }
+    }
+
+    // Draw checkmark icon
+    void drawCheckmark(int x, int y) {
+      tft.drawLine(x, y+8, x+5, y+13, DUCO_GREEN);
+      tft.drawLine(x+1, y+8, x+6, y+13, DUCO_GREEN);
+      tft.drawLine(x+5, y+13, x+14, y+2, DUCO_GREEN);
+      tft.drawLine(x+6, y+13, x+15, y+2, DUCO_GREEN);
+    }
+
+    // Draw the static layout elements (called once)
+    bool tft_layout_drawn = false;
+    // Guard flag to prevent concurrent display access from both cores
+    volatile bool tft_busy = false;
+    void drawStaticLayout() {
+      tft.fillScreen(BLACK);
+      // Top separator
+      tft.drawFastHLine(0, 28, 320, DUCO_DARK);
+      // Middle separator
+      tft.drawFastHLine(0, 105, 320, DUCO_DARK);
+      // Bottom separator
+      tft.drawFastHLine(0, 140, 320, DUCO_DARK);
+      // kH/s label (static)
+      tft.setTextColor(DUCO_GRAY, BLACK);
+      tft.setTextSize(2);
+      tft.setCursor(160, 55);
+      tft.print("kH/s");
+      // diff label (static)
+      tft.setTextSize(1);
+      tft.setCursor(280, 40);
+      tft.print("diff");
+      // shr/s label (static)
+      tft.setCursor(274, 60);
+      tft.print("shr/s");
+      // Separator between diff and shr/s
+      tft.drawFastHLine(160, 55, 155, DUCO_DARK);
+      // Version + label in bottom bar
+      tft.setTextSize(1);
+      tft.setTextColor(DUCO_GRAY, BLACK);
+      tft.setCursor(5, 147);
+      tft.print("Duino-Coin " + String(SOFTWARE_VERSION));
+      tft_layout_drawn = true;
+    }
 #endif
 
   #if defined(DISPLAY_SSD1306)
@@ -180,6 +239,76 @@
           drawStrMultiline(features_str.c_str(), 2, 46);
           u8g2.sendBuffer();
       #endif
+
+      #if defined(DISPLAY_ST7789)
+          tft.fillScreen(BLACK);
+          tft_layout_drawn = false;
+
+          // Board type + frequency
+          tft.setTextColor(DUCO_GOLD, BLACK);
+          tft.setTextSize(3);
+          tft.setCursor(10, 15);
+          #if defined(ESP8266)
+            tft.print("ESP8266 ");
+          #elif defined(CONFIG_FREERTOS_UNICORE)
+            tft.print("ESP32S2/C3 ");
+          #else
+            tft.print("ESP32 ");
+          #endif
+          #if defined(ESP8266)
+            tft.print(String(ESP.getCpuFreqMHz()).c_str());
+          #else
+            tft.print(String(getCpuFrequencyMhz()).c_str());
+          #endif
+          tft.print(" MHz");
+
+          // Separator
+          tft.drawFastHLine(10, 50, 300, DUCO_DARK);
+
+          // Compile date
+          tft.setTextColor(WHITE, BLACK);
+          tft.setTextSize(2);
+          tft.setCursor(10, 60);
+          tft.print("Compiled ");
+          tft.print(__DATE__);
+
+          // Features
+          tft.setTextColor(DUCO_CYAN, BLACK);
+          tft.setCursor(10, 90);
+          tft.print("Features:");
+          tft.setTextColor(WHITE, BLACK);
+          tft.setTextSize(1);
+          tft.setCursor(10, 115);
+          String features_str = "OTA ";
+          #if defined(USE_LAN)
+            features_str += "LAN ";
+          #endif
+          #if defined(LED_BLINKING)
+            features_str += "Blink ";
+          #endif
+          #if defined(SERIAL_PRINTING)
+            features_str += "Serial ";
+          #endif
+          #if defined(WEB_DASHBOARD)
+            features_str += "Webserver ";
+          #endif
+          #if defined(DISPLAY_ST7789)
+            features_str += "ST7789 ";
+          #endif
+          #if defined(USE_INTERNAL_SENSOR)
+            features_str += "Int.sensor ";
+          #endif
+          #if defined(USE_DS18B20)
+            features_str += "DS18B20 ";
+          #endif
+          #if defined(USE_DHT)
+            features_str += "DHT ";
+          #endif
+          #if defined(USE_HSU07M)
+            features_str += "HSU07M ";
+          #endif
+          tft.print(features_str);
+      #endif
     }
 
     void display_info(String message) {
@@ -217,6 +346,54 @@
           lcd.print(SOFTWARE_VERSION);
           lcd.setCursor(0, 1);
           lcd.print(message);
+      #endif
+
+      #if defined(DISPLAY_ST7789)
+          tft.fillScreen(BLACK);
+          tft_layout_drawn = false;
+
+          // Duino-Coin title
+          tft.setTextColor(DUCO_GOLD, BLACK);
+          tft.setTextSize(3);
+          tft.setCursor(50, 10);
+          tft.print("Duino-Coin");
+
+          // Board type
+          tft.setTextColor(WHITE, BLACK);
+          tft.setTextSize(3);
+          tft.setCursor(50, 45);
+          #if defined(ESP8266)
+            tft.print("ESP8266");
+          #elif defined(CONFIG_FREERTOS_UNICORE)
+            tft.print("ESP32S2/C3");
+          #else
+            tft.print("ESP32");
+          #endif
+
+          // MINER label
+          tft.setTextColor(DUCO_GOLD, BLACK);
+          tft.setTextSize(2);
+          tft.setCursor(230, 50);
+          tft.print("MINER");
+
+          // Version
+          tft.setTextSize(1);
+          tft.setTextColor(DUCO_GRAY, BLACK);
+          tft.setCursor(280, 70);
+          tft.print("v");
+          tft.print(String(SOFTWARE_VERSION).c_str());
+
+          // URL
+          tft.setTextColor(DUCO_GRAY, BLACK);
+          tft.setTextSize(1);
+          tft.setCursor(50, 85);
+          tft.print("www.duinocoin.com");
+
+          // Message
+          tft.setTextColor(WHITE, BLACK);
+          tft.setTextSize(2);
+          tft.setCursor(10, 130);
+          tft.print(message);
       #endif
     }
 
@@ -305,35 +482,89 @@
       #endif
 
       #if defined(DISPLAY_ST7789)
-          // Use background color to overwrite old text (no fillScreen needed = no flicker)
-          tft.setTextColor(WHITE, BLACK);
-          
-          tft.setTextSize(2);
-          tft.setCursor(2, 10);
-          tft.print("Hashrate: " + hashrate + " kH   ");
-        
-          tft.setCursor(2, 30);
-          tft.print("Node: " + node + "   ");
-        
-          tft.setCursor(2, 50);
-          tft.print("Accepted/Total: " + accepted_shares + "/" + total_shares + "   ");
-          tft.setCursor(2, 70);
-          tft.print("Accepted Rate: " + accept_rate + "%   ");
-        
-          tft.setCursor(2, 90);
-          tft.print("Ping: " + ping + " ms   ");
-        
-          tft.setCursor(2, 110);
-          tft.print("Uptime: " + uptime + "   ");
-        
-          tft.setCursor(2, 130);
-          tft.print("Share Rate: " + sharerate + "   ");
-          tft.setCursor(2, 150);
-          tft.print("Difficulty: " + difficulty + "   ");
-        
-          tft.setCursor(2, 200);
-          tft.print("IP: " + WiFi.localIP().toString() + "   ");
+          // Prevent concurrent access from both cores
+          if (tft_busy) return;
+          tft_busy = true;
 
+          // Draw static layout elements once (separators, labels)
+          if (!tft_layout_drawn) {
+            drawStaticLayout();
+          }
+
+          // === TOP BAR (y=0..27) ===
+          // WiFi signal bars
+          drawWifiBars(5, 3);
+
+          // Ping
+          tft.setTextColor(WHITE, BLACK);
+          tft.setTextSize(2);
+          tft.setCursor(45, 6);
+          tft.print(ping + "ms   ");
+
+          // Node
+          tft.setTextSize(1);
+          tft.setTextColor(DUCO_GRAY, BLACK);
+          tft.setCursor(140, 10);
+          tft.print(node + "   ");
+
+          // === MAIN AREA (y=30..104) ===
+          // Clear hashrate area to prevent stray pixels when size changes
+          tft.fillRect(5, 35, 150, 40, BLACK);
+
+          // Hashrate (large)
+          tft.setTextColor(DUCO_GREEN, BLACK);
+          if (hashrate.toFloat() < 100.0) {
+            tft.setTextSize(4);
+            tft.setCursor(5, 40);
+          } else {
+            tft.setTextSize(3);
+            tft.setCursor(5, 45);
+          }
+          tft.print(hashrate);
+
+          // Difficulty value
+          tft.setTextColor(WHITE, BLACK);
+          tft.setTextSize(2);
+          tft.setCursor(165, 35);
+          tft.print(difficulty + "   ");
+
+          // Share rate value
+          tft.setCursor(165, 60);
+          tft.print(sharerate + "   ");
+
+          // === SHARES BAR (y=106..139) ===
+          // Clear checkmark area then redraw
+          tft.fillRect(3, 110, 20, 18, BLACK);
+          drawCheckmark(5, 112);
+
+          // Accepted / Total
+          tft.setTextColor(WHITE, BLACK);
+          tft.setTextSize(2);
+          tft.setCursor(28, 112);
+          tft.print(accepted_shares + "/" + total_shares + "  ");
+
+          // Accept rate
+          tft.setTextSize(1);
+          tft.setTextColor(DUCO_CYAN, BLACK);
+          tft.setCursor(215, 118);
+          tft.print("(" + accept_rate + "%)  ");
+
+          // === BOTTOM BAR (y=141..169) ===
+          // IP address
+          tft.setTextSize(1);
+          tft.setTextColor(DUCO_GRAY, BLACK);
+          tft.setCursor(5, 158);
+          tft.print(WiFi.localIP().toString() + "   ");
+
+          // Uptime (right-aligned) - clear area first
+          tft.fillRect(160, 145, 160, 20, BLACK);
+          tft.setTextColor(WHITE, BLACK);
+          tft.setTextSize(2);
+          int uptimeWidth = uptime.length() * 12;
+          tft.setCursor(315 - uptimeWidth, 148);
+          tft.print(uptime);
+
+          tft_busy = false;
       #endif
     }
 #endif
