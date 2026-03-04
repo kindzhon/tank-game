@@ -90,14 +90,12 @@
         tft.drawFastHLine(0, 28, 320, DUCO_DARK);
         tft.drawFastHLine(0, 105, 320, DUCO_DARK);
         tft.drawFastHLine(0, 140, 320, DUCO_DARK);
-        tft.drawFastHLine(160, 55, 155, DUCO_DARK);
-        tft.setTextSize(2);
-        tft.setCursor(160, 55);
-        tft.print("kH/s");
+        tft.drawFastHLine(200, 55, 115, DUCO_DARK);
+        // diff and shr/s labels on right side (static)
         tft.setTextSize(1);
         tft.setCursor(280, 40);
         tft.print("diff");
-        tft.setCursor(274, 60);
+        tft.setCursor(274, 65);
         tft.print("shr/s");
         tft.setCursor(5, 147);
         tft.print("Duino-Coin " + String(SOFTWARE_VERSION));
@@ -550,7 +548,7 @@
             tft.print(node + "   ");
 
             // === HASHRATE ===
-            tft.fillRect(5, 35, 150, 40, BLACK);
+            tft.fillRect(5, 35, 125, 40, BLACK);
             tft.setTextColor(DUCO_GREEN, BLACK);
             if (hashrate.toFloat() < 100.0) {
               tft.setTextSize(4);
@@ -560,15 +558,20 @@
               tft.setCursor(5, 45);
             }
             tft.print(hashrate);
+            // kH/s label redrawn every cycle (prevents it from being erased)
+            tft.setTextColor(DUCO_GRAY, BLACK);
+            tft.setTextSize(2);
+            tft.setCursor(135, 45);
+            tft.print("kH/s");
 
             // === DIFF + SHARERATE ===
-            tft.fillRect(165, 35, 100, 16, BLACK);
-            tft.fillRect(165, 60, 100, 16, BLACK);
+            tft.fillRect(205, 35, 70, 16, BLACK);
+            tft.fillRect(205, 62, 70, 16, BLACK);
             tft.setTextColor(WHITE, BLACK);
             tft.setTextSize(2);
-            tft.setCursor(165, 35);
+            tft.setCursor(210, 35);
             tft.print(difficulty);
-            tft.setCursor(165, 60);
+            tft.setCursor(210, 62);
             tft.print(sharerate);
 
             // === SHARES ===
