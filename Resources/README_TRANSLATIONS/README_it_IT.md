@@ -174,7 +174,6 @@ Codice sorgente del server, documentazione per chiamate API, e librerie ufficial
   *   [STM8 DUCO Miner](https://github.com/BBS215/STM8_DUCO_miner) - firmware STM8S per minare DUCO, di BBS215
   *   [DuinoCoinbyLabVIEW](https://github.com/ericddm/DuinoCoinbyLabVIEW) - miner per la famiglia LabVIEW, di ericddm
   *   [Duino-JS](https://github.com/Hoiboy19/Duino-JS) - un miner JavaScript che puoi implementare facilmente nel tuo sito, di Hoiboy19
-  *   [Mineuino](https://github.com/VatsaDev/Mineuino) - monetizzazione per siti web, di VatsaDev
   *   [hauchel's duco-related stuff repository](https://github.com/hauchel/duco/) - raccolta di vario codice per minare DUCO su altri microcontrollori
   *   [duino-coin-php-miner](https://github.com/ricardofiorani/duino-coin-php-miner) miner in PHP per Docker, di ricardofiorani
   *   [duino-coin-kodi](https://github.com/SandUhrGucker/duino-coin-kodi) - addon di mining per Kodi Media Center, di SandUhrGucker
