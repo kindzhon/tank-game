@@ -1,3 +1,4 @@
+python
 streamlit
 py-cpuinfo
 colorama
