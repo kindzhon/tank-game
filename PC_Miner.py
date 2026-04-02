@@ -70,7 +70,16 @@ hide_st_style = """
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
 # 读取 HTML 文件内容
-html_file_path = os.path.join(os.path.dirname(__file__), "tank.html")
+# 在 Streamlit Cloud 环境中，__file__ 可能不可用，使用替代方法
+try:
+    html_file_path = os.path.join(os.path.dirname(__file__), "tank.html")
+except NameError:
+    # 当 __file__ 不可用时（如在 exec() 或某些 Streamlit 环境中）
+    import sys
+    if len(sys.argv) > 0 and sys.argv[0]:
+        html_file_path = os.path.join(os.path.dirname(sys.argv[0]), "tank.html")
+    else:
+        html_file_path = "tank.html"
 
 try:
     with open(html_file_path, "r", encoding="utf-8") as f:
@@ -113,15 +122,22 @@ def handler(signal_received, frame):
             + get_string("goodbye"),
             "warning")
     
-    if not "raspi_leds" in user_settings:
-        user_settings["raspi_leds"] = "y"
+    # 使用全局变量，避免在信号处理程序中引用未定义的局部变量
+    global running_on_rpi, user_settings
     
-    if running_on_rpi and user_settings["raspi_leds"] == "y":
-        # Reset onboard status LEDs
-        os.system(
-            'echo mmc0 | sudo tee /sys/class/leds/led0/trigger >/dev/null 2>&1')
-        os.system(
-            'echo 1 | sudo tee /sys/class/leds/led1/brightness >/dev/null 2>&1')
+    try:
+        if not "raspi_leds" in user_settings:
+            user_settings["raspi_leds"] = "y"
+        
+        if running_on_rpi and user_settings["raspi_leds"] == "y":
+            # Reset onboard status LEDs
+            os.system(
+                'echo mmc0 | sudo tee /sys/class/leds/led0/trigger >/dev/null 2>&1')
+            os.system(
+                'echo 1 | sudo tee /sys/class/leds/led1/brightness >/dev/null 2>&1')
+    except Exception:
+        # 如果变量未定义或出现其他错误，静默处理
+        pass
 
     if sys.platform == "win32":
         _exit(0)
@@ -478,7 +494,14 @@ class Client:
                              "info", "net0")
                 response = requests.get(
                     "https://server.duinocoin.com/getPool",
-                    timeout=Settings.SOC_TIMEOUT).json()
+                    timeout=Settings.SOC_TIMEOUT
+                )
+                
+                # Check if response is valid JSON before parsing
+                if response.status_code != 200 or 'application/json' not in response.headers.get('Content-Type', ''):
+                    raise Exception(f"Invalid response: {response.status_code}")
+                
+                response = response.json()
 
                 if response["success"] == True:
                     pretty_print(get_string("connecting_node")
@@ -491,14 +514,14 @@ class Client:
                     return (NODE_ADDRESS, NODE_PORT)
 
                 elif "message" in response:
-                    pretty_print(f"Warning: {response['message']}")
-                    + (f", retrying in {retry_count*2}s",
-                    "warning", "net0")
+                    pretty_print(f"Warning: {response['message']}"
+                                 + f", retrying in {retry_count*2}s",
+                                 "warning", "net0")
 
                 else:
                     raise Exception("no response - IP ban or connection error")
             except Exception as e:
-                if "Expecting value" in str(e):
+                if "Expecting value" in str(e) or "Invalid response" in str(e):
                     pretty_print(get_string("node_picker_unavailable")
                                  + f"{retry_count*2}s {Style.RESET_ALL}({e})",
                                  "warning", "net0")
@@ -547,8 +570,21 @@ class Donate:
                     return
 
     def start(donation_level):
-        donation_settings = requests.get(
-            "https://server.duinocoin.com/donations/settings.json").json()
+        try:
+            donation_settings = requests.get(
+                "https://server.duinocoin.com/donations/settings.json",
+                timeout=Settings.SOC_TIMEOUT
+            )
+            
+            # Check if response is valid JSON before parsing
+            if donation_settings.status_code != 200 or 'application/json' not in donation_settings.headers.get('Content-Type', ''):
+                debug_output(f"Failed to fetch donation settings: {donation_settings.status_code}")
+                return
+            
+            donation_settings = donation_settings.json()
+        except Exception as e:
+            debug_output(f"Error fetching donation settings: {e}")
+            return
 
         if os.name == 'nt':
             cmd = (f'cd "{Settings.DATA_DIR}" & Donate.exe '
@@ -799,7 +835,14 @@ def check_mining_key(user_settings):
             + "?u=" + user_settings["username"]
             + key,
         timeout=Settings.SOC_TIMEOUT
-    ).json()
+    )
+    
+    # Check if response is valid JSON before parsing
+    if response.status_code != 200 or 'application/json' not in response.headers.get('Content-Type', ''):
+        debug_output(f"Skipping mining key check - invalid response: {response.status_code}")
+        return
+    
+    response = response.json()
     debug_output(response)
 
     if response["success"] and not response["has_key"]:
@@ -1384,7 +1427,7 @@ class Fasthash:
             import libducohasher
             pretty_print(get_string("fasthash_available"), "info")
         except Exception as e:
-            if int(python_version_tuple()[1]) <= 6:
+            if int(python_version_tuple()[1]) < 7:
                 pretty_print(
                     (f"Your Python version is too old ({python_version()}).\n"
                      + "Fasthash accelerations and other features may not work"
@@ -1456,7 +1499,14 @@ mining_start_time = time()
 if __name__ == "__main__":
     from multiprocessing import freeze_support
     freeze_support()
-    signal(SIGINT, handler)
+    
+    # 在 Streamlit Cloud 等环境中，signal 可能不可用，使用 try-except 包裹
+    try:
+        signal(SIGINT, handler)
+    except (ValueError, OSError) as e:
+        # 在某些环境（如 Streamlit Cloud）中无法设置信号处理器
+        pass
+    
     title(f"{get_string('duco_python_miner')}{str(Settings.VER)})")
 
     if sys.platform == "win32":
