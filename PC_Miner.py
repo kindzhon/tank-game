@@ -1384,7 +1384,7 @@ class Fasthash:
             import libducohasher
             pretty_print(get_string("fasthash_available"), "info")
         except Exception as e:
-            if int(python_version_tuple()[1]) <= 6:
+            if int(python_version_tuple()[1]) <= 7:
                 pretty_print(
                     (f"Your Python version is too old ({python_version()}).\n"
                      + "Fasthash accelerations and other features may not work"
